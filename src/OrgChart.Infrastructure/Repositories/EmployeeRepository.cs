@@ -48,12 +48,9 @@ public class EmployeeRepository : IEmployeeRepository
         return _context.SaveChangesAsync();
     }
 
-    public async Task<int> GetSubordinateCount(int employeeId)
+    public Task<int> GetSubordinateCount(int employeeId)
     {
-        var employe = await _context.Employees.Include(e => e.Subordinates)
-            .Where(e => e.Id == employeeId).FirstOrDefaultAsync();//TODO Check
-
-        return employe == null ? 0 : employe.Subordinates.Count;
+        return _context.Employees.CountAsync(e => e.ManagerId == employeeId);
     }
 
     public Task<int> GetHierarchyDepth(int employeeId)
