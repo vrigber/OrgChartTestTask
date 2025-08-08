@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using OrgChart.Core.Interfaces;
 using OrgChart.Core.Models;
+using OrgChart.Infrastructure.Entities;
 
 namespace OrgChart.Infrastructure.Repositories;
 
@@ -13,41 +15,79 @@ public class EmployeeRepository : IEmployeeRepository
 
     public Task<Employee?> GetByIdOrDefault(int id)
     {
-        throw new NotImplementedException();
+        return _context.Employees
+            .Include(e => e.Manager)
+            .Include(e => e.Subordinates)
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public Task<List<Employee>> GetAll()
     {
-        throw new NotImplementedException();
+        return _context.Employees
+            .Include(e => e.Manager)
+            .Include(e => e.Subordinates).ToListAsync();
     }
 
-    public Task<Employee> AddEmployee(Employee employee)
+    public async Task<Employee> AddEmployee(Employee employee)
     {
-        throw new NotImplementedException();
+        await _context.Employees.AddAsync(employee);
+        await _context.SaveChangesAsync();
+        return employee;
     }
 
     public Task UpdateEmployee(Employee employee)
     {
-        throw new NotImplementedException();
+        _context.Employees.Update(employee);
+        return _context.SaveChangesAsync();
     }
 
     public Task DeleteEmployee(Employee employee)
     {
-        throw new NotImplementedException();
+        _context.Employees.Remove(employee);
+        return _context.SaveChangesAsync();
     }
 
-    public Task<int> GetSubordinateCount(int employeeId)
+    public async Task<int> GetSubordinateCount(int employeeId)
     {
-        throw new NotImplementedException();
+        var employe = await _context.Employees.Include(e => e.Subordinates)
+            .Where(e => e.Id == employeeId).FirstOrDefaultAsync();//TODO Check
+
+        return employe == null ? 0 : employe.Subordinates.Count;
     }
 
     public Task<int> GetHierarchyDepth(int employeeId)
     {
-        throw new NotImplementedException();
+        return _context.Set<HierarchyDepthResult>().FromSqlInterpolated($@"WITH RECURSIVE cte AS (
+  SELECT id, manager_id, 1 AS depth
+  FROM orgchart.employees
+  WHERE id = {employeeId}
+
+  UNION ALL
+
+  SELECT i.id, i.manager_id, cte.depth + 1
+  FROM orgchart.employees i
+  JOIN cte ON i.id = cte.manager_id
+  WHERE cte.depth < 7      
+)
+SELECT MAX(depth) AS ""Depth""
+FROM cte").Select(x => x.Depth).SingleAsync();
     }
 
     public Task<bool> HasCycle(int employeeId, int newManagerId)
     {
-        throw new NotImplementedException();
+        return _context.Employees.FromSqlInterpolated($@"WITH RECURSIVE cte AS (
+  SELECT id, manager_id, 1 AS depth
+  FROM orgchart.employees
+  WHERE id = {employeeId}
+
+  UNION ALL
+
+  SELECT i.id, i.manager_id, cte.depth + 1
+  FROM orgchart.employees i
+  JOIN cte ON i.manager_id = cte.id
+  WHERE cte.depth < 7      
+)
+SELECT *
+FROM cte").AnyAsync(e => e.Id == newManagerId);
     }
 }
