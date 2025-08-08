@@ -23,10 +23,7 @@ public class EmployeeRepository : IEmployeeRepository
 
     public Task<List<Employee>> GetAll()
     {
-        return _context.Employees
-            .Include(e => e.Manager)
-            .Include(e => e.Subordinates)
-            .AsSplitQuery().ToListAsync();
+        return _context.Employees.ToListAsync();
     }
 
     public async Task<Employee> AddEmployee(Employee employee)
