@@ -25,7 +25,8 @@ public class EmployeeRepository : IEmployeeRepository
     {
         return _context.Employees
             .Include(e => e.Manager)
-            .Include(e => e.Subordinates).ToListAsync();
+            .Include(e => e.Subordinates)
+            .AsSplitQuery().ToListAsync();
     }
 
     public async Task<Employee> AddEmployee(Employee employee)
